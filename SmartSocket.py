@@ -94,7 +94,7 @@ class SmartSocket:
 
 		# Send message length + serialized message
 		self.client_sock.send(len_bytes)
-		self.client_sock.send(message.encode())
+		self.client_sock.send(message)
 		if self.debug: print("Message sent successfully!")
 
 
@@ -114,4 +114,4 @@ class SmartSocket:
 		else:
 			msg_len = struct.unpack('>L', msg_len_bytes)[0]
 			if self.debug: print("Message received successfully!")
-			return str(self.client_sock.recv(msg_len).decode())
+			return self.client_sock.recv(msg_len)
