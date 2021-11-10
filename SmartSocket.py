@@ -47,9 +47,10 @@ class SmartSocket:
 		self.server_port = server_port
 		self.debug = debug
 
-		if socket_type == SocketType.SERVER:
+		if self.socket_type == SocketType.SERVER:
 			# Create TCP/IP socket on server side
 			self.server_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
+			self.server_sock.setsockopt(socket.SOL_SOCKET, socket.SO_REUSEADDR, 1)
 
 			# Bind the socket to the IP/PORT of the server
 			# '' implies any IP/hostname that the server can be accessed by
@@ -57,29 +58,40 @@ class SmartSocket:
 
 			# Restrict to only one connection
 			self.server_sock.listen(1)
-			if self.debug: print("Server waiting for connection...")
-
-			# Wait for a client to connect
-			self.client_sock, self.client_ip = self.server_sock.accept()
-			if self.debug: print("Connection established with client: ", str(self.client_ip), ":", self.server_port)
 		else:
 			# Create TCP/IP socket on client side
 			self.client_sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
 
+		# Connect/bind client-server
+		self.connect()
+
+	def connect(self):
+		if self.socket_type == SocketType.SERVER:
+			# Wait for a client to connect
+			if self.debug: print("Server waiting for connection...")
+			self.client_sock, self.client_ip = self.server_sock.accept()
+			if self.debug: print("Connection established with client: ", str(self.client_ip), ":", self.server_port)
+		else:
 			# Connect the client socket to the IP/PORT of the server
 			self.client_sock.connect((self.server_ip, self.server_port))
 			if self.debug: print("Connection established with server: ", self.server_ip, ":", self.server_port)
 
-	def closeSocket(self): # CDL=> What happens if send/receive called on a closed socket?
+	def closeSocket(self):
 		"""Function to close the socket."""
-
-		# Close the socket
-		self.client_sock.close()
 
 		# Print exit message
 		if self.socket_type == SocketType.SERVER:
+			# Close the socket
+			self.client_sock.shutdown(2)
+			self.client_sock.close()
 			if self.debug: print("Disconnected from client: ", str(self.client_ip), ":", self.server_port)
 		else:
+			# Inform the server that the client is disconnecting
+			self.sendMessage("CLIENT_SHUTDOWN".encode())
+
+			# Close the socket
+			self.client_sock.shutdown(2)
+			self.client_sock.close()
 			if self.debug: print("Disconnected from server: ", self.server_ip, ":", self.server_port)
 
 	def sendMessage(self, message):
@@ -114,4 +126,13 @@ class SmartSocket:
 		else:
 			msg_len = struct.unpack('>L', msg_len_bytes)[0]
 			if self.debug: print("Message received successfully!")
-			return self.client_sock.recv(msg_len)
+			bytes = self.client_sock.recv(msg_len)
+			try:
+				message = bytes.decode()
+				if message == "CLIENT_SHUTDOWN":
+					if self.debug: print("Client disconnected!")
+					self.closeSocket()
+					self.connect()
+					return None
+			except:
+				return bytes
