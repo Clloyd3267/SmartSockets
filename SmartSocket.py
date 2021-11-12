@@ -134,5 +134,5 @@ class SmartSocket:
 					self.closeSocket()
 					self.connect()
 					return None
-			except:
+			finally:
 				return bytes
