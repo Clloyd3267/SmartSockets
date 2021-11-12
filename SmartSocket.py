@@ -28,7 +28,7 @@ class SmartSocket:
 		server_port (str)        : The Port of the server.
 		debug       (bool)       : Whether debug prints should be enabled.
     """
-	def __init__(self, server_ip, server_port, socket_type=SocketType.SERVER, debug=True):
+	def __init__(self, server_ip, server_port, socket_type=SocketType.SERVER, debug=False):
 		"""
 		The default constructor for class SmartSocket.
 
